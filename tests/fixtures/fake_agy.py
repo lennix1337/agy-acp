@@ -376,6 +376,27 @@ for line in sys.stdin:
     if MODE == "no-delta":
         emit(result())
         continue
+    if MODE == "tools":
+        tool_info = {"name": "run_command", "parameters": {"CommandLine": "ls -la"}}
+        for state, info in (
+            ("ACTIVE", tool_info),
+            ("DONE", {**tool_info, "output": "total 0"}),
+        ):
+            emit(
+                {
+                    "event": "step_update",
+                    "step_update": {
+                        "conversation_id": CONVERSATION_ID,
+                        "step_index": 2,
+                        "state": state,
+                        "step_type": "tool",
+                        "tool_name": "run_command",
+                        "tool_info": info,
+                    },
+                }
+            )
+        emit(result(response="all done"))
+        continue
     if MODE == "suffix":
         text_delta = "fake-"
     elif MODE == "empty-delta":

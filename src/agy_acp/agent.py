@@ -34,6 +34,8 @@ from acp.schema import (
     SessionResumeCapabilities,
     SetSessionConfigOptionResponse,
     TextContentBlock,
+    ToolCallProgress,
+    ToolCallStart,
 )
 from pydantic import ValidationError
 
@@ -58,10 +60,12 @@ from agy_acp.mcp import (
 )
 from agy_acp.models import AGY_EFFORTS, AgyEffort, AgyModel
 from agy_acp.process import AgyProcess
+from agy_acp.tool_calls import finish_update, start_update
 
 UpdateSender = Callable[[str, dict[str, object]], Awaitable[None]]
 _MAX_BUFFERED_EVENT_BYTES = 128 * 1024 * 1024
 _DEFAULT_CONFIG_VALUE = "default"
+_TOOL_FINAL_STATES = frozenset({"DONE", "ERROR", "FAILED", "CANCELED"})
 
 
 def _positive_integer(name: str, value: object) -> None:
@@ -702,6 +706,30 @@ class AgyAgent:
         except TimeoutError:
             raise BackendTimeoutError from None
 
+    async def _emit_tool_before_deadline(
+        self,
+        session_id: str,
+        event: AgyStepUpdateEvent,
+        started_tools: set[int],
+        deadline: float,
+    ) -> None:
+        tool = event.tool
+        if tool is None:
+            return
+        updates: list[ToolCallStart | ToolCallProgress] = []
+        if event.step_index not in started_tools:
+            started_tools.add(event.step_index)
+            updates.append(start_update(event, tool))
+        if event.state in _TOOL_FINAL_STATES:
+            updates.append(finish_update(event, tool, failed=event.state != "DONE"))
+        try:
+            async with asyncio.timeout(self._remaining_prompt_time(deadline)):
+                for update in updates:
+                    payload = update.model_dump(mode="json", by_alias=True, exclude_none=True)
+                    await self._send_update(session_id, payload)
+        except TimeoutError:
+            raise BackendTimeoutError from None
+
     async def _launch_generation(
         self,
         session_id: str,
@@ -875,6 +903,7 @@ class AgyAgent:
         message_id = uuid4().hex
         chunks: list[str] = []
         streamed_bytes = 0
+        started_tools: set[int] = set()
         deadline = asyncio.get_running_loop().time() + self._config.prompt_timeout
         process: AgyProcess | None = None
         try:
@@ -907,6 +936,10 @@ class AgyAgent:
                 if event.conversation_id != session_id:
                     raise _backend_unavailable()
                 if isinstance(event, AgyStepUpdateEvent):
+                    if event.tool is not None:
+                        await self._emit_tool_before_deadline(
+                            session_id, event, started_tools, deadline
+                        )
                     if event.text_delta:
                         streamed_bytes += len(event.text_delta.encode("utf-8"))
                         if streamed_bytes > self._config.max_line_bytes:

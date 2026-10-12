@@ -8,6 +8,7 @@ from agy_acp.events import (
     AgyResultEvent,
     AgyResultStatus,
     AgyStepUpdateEvent,
+    AgyToolInfo,
     AgyUnknownEvent,
     parse_agy_event,
 )
@@ -85,6 +86,47 @@ def test_text_step_update_is_typed() -> None:
         duration_seconds=0.5,
         has_usage=True,
     )
+
+
+def test_tool_step_update_carries_tool_info() -> None:
+    event = parse_agy_event(
+        {
+            "event": "step_update",
+            "step_update": {
+                "conversation_id": "opaque-session",
+                "step_index": 4,
+                "state": "DONE",
+                "step_type": "tool",
+                "tool_name": "view_file",
+                "tool_info": {
+                    "name": "view_file",
+                    "parameters": {"AbsolutePath": "/work/a.txt"},
+                    "output": "3 lines",
+                },
+            },
+        }
+    )
+
+    assert isinstance(event, AgyStepUpdateEvent)
+    assert event.tool == AgyToolInfo(
+        name="view_file", parameters={"AbsolutePath": "/work/a.txt"}, output="3 lines"
+    )
+
+
+def test_tool_info_without_a_name_is_invalid() -> None:
+    with pytest.raises(InvalidEventError):
+        parse_agy_event(
+            {
+                "event": "step_update",
+                "step_update": {
+                    "conversation_id": "opaque-session",
+                    "step_index": 4,
+                    "state": "ACTIVE",
+                    "step_type": "tool",
+                    "tool_info": {"parameters": {}},
+                },
+            }
+        )
 
 
 @pytest.mark.parametrize("status", list(AgyResultStatus))

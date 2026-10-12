@@ -29,6 +29,13 @@ class AgyInitEvent:
 
 
 @dataclass(frozen=True, slots=True)
+class AgyToolInfo:
+    name: str
+    parameters: Mapping[str, object]
+    output: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class AgyStepUpdateEvent:
     conversation_id: str
     step_index: int
@@ -37,6 +44,7 @@ class AgyStepUpdateEvent:
     text_delta: str | None
     duration_seconds: float | None
     has_usage: bool
+    tool: AgyToolInfo | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,6 +159,18 @@ def _parse_init(payload: Mapping[str, object]) -> AgyInitEvent:
     )
 
 
+def _parse_tool_info(values: Mapping[str, object]) -> AgyToolInfo | None:
+    if values.get("step_type") != "tool" or "tool_info" not in values:
+        return None
+    info = _mapping(values["tool_info"])
+    parameters = info.get("parameters", {})
+    return AgyToolInfo(
+        name=_required_string(info, "name"),
+        parameters=_mapping(parameters),
+        output=_optional_string(info, "output"),
+    )
+
+
 def _parse_step_update(payload: Mapping[str, object]) -> AgyStepUpdateEvent:
     values = _mapping(payload.get("step_update"))
     state = _required_string(values, "state")
@@ -162,6 +182,7 @@ def _parse_step_update(payload: Mapping[str, object]) -> AgyStepUpdateEvent:
         text_delta=_optional_string(values, "text_delta"),
         duration_seconds=_optional_number(values, "duration_seconds"),
         has_usage=_usage_presence(values),
+        tool=_parse_tool_info(values),
     )
 
 

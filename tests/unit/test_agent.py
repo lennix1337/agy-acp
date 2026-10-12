@@ -443,6 +443,35 @@ async def test_prompt_emits_only_the_unstreamed_final_suffix(
     await agent.close()
 
 
+@pytest.mark.asyncio
+async def test_prompt_reports_tool_steps_as_tool_call_updates(tmp_path: Path) -> None:
+    updates: list[dict[str, object]] = []
+
+    async def send_update(_session_id: str, update: dict[str, object]) -> None:
+        updates.append(update)
+
+    agent = AgyAgent(agent_config(tmp_path, "tools"), send_update)
+    session = await agent.new_session(cwd=str(tmp_path), mcp_servers=[])
+    response = await agent.prompt(
+        session_id=session.session_id,
+        prompt=[{"type": "text", "text": "hello"}],
+    )
+
+    assert response.stop_reason == "end_turn"
+    started, finished, message = updates
+    assert started["sessionUpdate"] == "tool_call"
+    assert started["title"] == "run_command: ls -la"
+    assert started["kind"] == "execute"
+    assert started["status"] == "in_progress"
+    assert started["rawInput"] == {"CommandLine": "ls -la"}
+    assert finished["sessionUpdate"] == "tool_call_update"
+    assert finished["toolCallId"] == started["toolCallId"]
+    assert finished["status"] == "completed"
+    assert finished["rawOutput"] == "total 0"
+    assert message["content"] == {"type": "text", "text": "all done"}
+    await agent.close()
+
+
 @pytest.mark.parametrize("mode", ["conflict", "mismatch", "result-mismatch"])
 @pytest.mark.asyncio
 async def test_prompt_rejects_conflicting_or_mismatched_backend_results(
