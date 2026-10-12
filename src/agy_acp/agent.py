@@ -59,7 +59,7 @@ from agy_acp.events import (
     AgyStepUpdateEvent,
     AgyUsage,
 )
-from agy_acp.executable import AgyCommand
+from agy_acp.executable import AGY_MODES, AgyCommand
 from agy_acp.mcp import (
     McpServerSpec,
     McpWorkspaceManager,
@@ -96,6 +96,7 @@ def _positive_seconds(name: str, value: object) -> None:
 class AgentConfig:
     command: AgyCommand
     models: tuple[AgyModel, ...] = ()
+    mode: str | None = None
     mcp_temp_parent: Path | None = None
     max_line_bytes: int = 4 * 1024 * 1024
     max_stderr_bytes: int = 64 * 1024
@@ -117,6 +118,8 @@ class AgentConfig:
             or any(model.id == _DEFAULT_CONFIG_VALUE for model in self.models)
         ):
             raise ValueError("models must be unique AgyModel values")
+        if self.mode is not None and self.mode not in AGY_MODES:
+            raise ValueError("mode is invalid")
         if self.mcp_temp_parent is not None and (
             not isinstance(self.mcp_temp_parent, Path)
             or not self.mcp_temp_parent.is_absolute()
@@ -496,6 +499,7 @@ class AgyAgent:
         process_config = AgyProcessConfig(
             command=self._config.command,
             cwd=workspace,
+            mode=self._config.mode,
             additional_directories=additional_paths,
             max_line_bytes=self._config.max_line_bytes,
             max_stderr_bytes=self._config.max_stderr_bytes,
@@ -595,6 +599,7 @@ class AgyAgent:
             command=self._config.command,
             cwd=workspace,
             conversation_id=session_id,
+            mode=self._config.mode,
             additional_directories=additional_paths,
             max_line_bytes=self._config.max_line_bytes,
             max_stderr_bytes=self._config.max_stderr_bytes,

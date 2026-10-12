@@ -5,7 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from agy_acp.executable import AgyCommand
+from agy_acp.executable import AGY_MODES, AgyCommand
 
 _MAX_PENDING_EVENT_BYTES = 16 * 1024 * 1024
 _MAX_ENVIRONMENT_OVERRIDE_BYTES = 1024 * 1024
@@ -34,6 +34,7 @@ class AgyProcessConfig:
     additional_directories: tuple[Path, ...] = ()
     conversation_id: str | None = None
     model: str | None = None
+    mode: str | None = None
     environment_overrides: tuple[tuple[str, str], ...] = field(default=(), repr=False)
     shutdown_callback: Callable[[], None] | None = field(
         default=None,
@@ -67,6 +68,8 @@ class AgyProcessConfig:
             or len(self.model.encode("utf-8")) > 128
         ):
             raise ValueError("model is invalid")
+        if self.mode is not None and self.mode not in AGY_MODES:
+            raise ValueError("mode is invalid")
         if not isinstance(self.environment_overrides, tuple):
             raise ValueError("environment_overrides must be a tuple")
         environment_names: set[str] = set()

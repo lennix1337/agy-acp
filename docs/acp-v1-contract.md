@@ -119,10 +119,10 @@ Image, audio, and embedded resource blocks are rejected until their capabilities
 The current compatibility baseline is `agy 1.2.14`. The persistent adapter invocation is:
 
 ```text
-agy [--model <variant>] --input-format stream-json --output-format stream-json
+agy [--model <variant>] [--mode <accept-edits|plan>] --input-format stream-json --output-format stream-json
 ```
 
-Prompts are written only as stdin `user` events. The adapter does not pass `--print` or `--print-timeout`: print mode is for a single command-line prompt, and an upstream print timeout may return partial output as success. The adapter exclusively owns initialization and prompt deadlines. Internal process-generation continuity and ACP `session/resume` add `--conversation <opaque-id>`, additional directories add repeated `--add-dir <absolute-path>` arguments, and an optional discovered model variant is passed as one literal argument pair without a shell.
+Prompts are written only as stdin `user` events. The adapter does not pass `--print` or `--print-timeout`: print mode is for a single command-line prompt, and an upstream print timeout may return partial output as success. The adapter exclusively owns initialization and prompt deadlines. Internal process-generation continuity and ACP `session/resume` add `--conversation <opaque-id>`, additional directories add repeated `--add-dir <absolute-path>` arguments, and an optional discovered model variant is passed as one literal argument pair without a shell. The operator-chosen `--mode accept-edits|plan` CLI flag is forwarded the same way; it never maps to `--dangerously-skip-permissions`.
 
 The adapter writes one user event per prompt:
 

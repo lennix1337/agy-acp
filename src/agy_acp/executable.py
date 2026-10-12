@@ -57,12 +57,17 @@ def resolve_executable(value: str | os.PathLike[str], *, path: str | None = None
     return canonical
 
 
+# Execution modes accepted by `agy --mode`; omitting the flag keeps agy's default.
+AGY_MODES = ("accept-edits", "plan")
+
+
 def build_agy_argv(
     command: AgyCommand,
     *,
     conversation_id: str | None = None,
     additional_directories: tuple[Path, ...] = (),
     model: str | None = None,
+    mode: str | None = None,
 ) -> tuple[str, ...]:
     argv = [
         str(command.executable),
@@ -72,6 +77,10 @@ def build_agy_argv(
         if not model or "\x00" in model:
             raise ValueError("model must be nonempty and contain no NUL")
         argv.extend(("--model", model))
+    if mode is not None:
+        if mode not in AGY_MODES:
+            raise ValueError("mode must be one of " + ", ".join(AGY_MODES))
+        argv.extend(("--mode", mode))
     argv.extend(
         (
             "--input-format",

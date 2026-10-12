@@ -99,6 +99,7 @@ Place the object under the agent entry required by the client, then restart or r
 | --- | --- |
 | `-h`, `--help` | Show command usage and exit. |
 | `--version` | Print the installed `agy-acp` version and exit. |
+| `--mode accept-edits\|plan` (env `AGY_ACP_MODE`) | Launch every agy generation with `agy --mode <value>`. `accept-edits` lets headless agy create and edit files, which it otherwise soft-denies; shell commands stay governed by agy's `permissions.allow` rules. Unset keeps agy's default. |
 
 The public CLI intentionally has no `--model` or `--effort` flags. Those values are negotiated per session through standard ACP configuration options.
 

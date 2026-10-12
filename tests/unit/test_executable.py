@@ -224,3 +224,28 @@ def test_process_config_rejects_invalid_model(tmp_path: Path, model: str) -> Non
             cwd=tmp_path,
             model=model,
         )
+
+
+def test_build_argv_adds_mode_as_literal_argument() -> None:
+    command = AgyCommand(Path(sys.executable).resolve())
+
+    argv = build_agy_argv(command, mode="accept-edits")
+
+    assert argv[1:3] == ("--mode", "accept-edits")
+
+
+@pytest.mark.parametrize("mode", ["", "yolo", "bad\x00mode"])
+def test_build_argv_rejects_invalid_mode(mode: str) -> None:
+    command = AgyCommand(Path(sys.executable).resolve())
+
+    with pytest.raises(ValueError):
+        build_agy_argv(command, mode=mode)
+
+
+def test_process_config_rejects_invalid_mode(tmp_path: Path) -> None:
+    with pytest.raises(ValueError):
+        AgyProcessConfig(
+            command=AgyCommand(Path(sys.executable).resolve()),
+            cwd=tmp_path,
+            mode="yolo",
+        )

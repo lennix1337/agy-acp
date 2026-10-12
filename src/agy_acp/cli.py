@@ -11,7 +11,7 @@ from acp import stdio_streams
 
 from agy_acp import __version__
 from agy_acp.agent import AgentConfig, AgyAgent
-from agy_acp.executable import AgyCommand, resolve_executable
+from agy_acp.executable import AGY_MODES, AgyCommand, resolve_executable
 from agy_acp.models import discover_models
 from agy_acp.protocol import AcpStdioServer
 
@@ -55,6 +55,12 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
+        "--mode",
+        choices=AGY_MODES,
+        default=os.environ.get("AGY_ACP_MODE"),
+        help="agy execution mode for every session (accept-edits lets agy write files unasked)",
+    )
+    parser.add_argument(
         "--prompt-timeout",
         type=positive_float,
         default=30 * 60.0,
@@ -91,6 +97,7 @@ async def serve(arguments: argparse.Namespace) -> None:
         AgentConfig(
             command=command,
             models=models,
+            mode=arguments.mode,
             max_line_bytes=arguments.max_line_bytes,
             prompt_timeout=arguments.prompt_timeout,
         ),
