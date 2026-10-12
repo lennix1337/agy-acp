@@ -48,6 +48,15 @@ class AgyStepUpdateEvent:
 
 
 @dataclass(frozen=True, slots=True)
+class AgyUsage:
+    input_tokens: int
+    output_tokens: int
+    thinking_tokens: int
+    cache_read_tokens: int
+    total_tokens: int
+
+
+@dataclass(frozen=True, slots=True)
 class AgyResultEvent:
     conversation_id: str
     status: AgyResultStatus
@@ -56,6 +65,7 @@ class AgyResultEvent:
     duration_seconds: float
     num_turns: int
     has_usage: bool
+    usage: AgyUsage | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,6 +152,23 @@ def _usage_presence(values: Mapping[str, object]) -> bool:
     return True
 
 
+def _parse_usage(values: Mapping[str, object]) -> AgyUsage | None:
+    """Token counts agy reports for the turn; None when absent or incomplete."""
+    usage = values.get("usage")
+    if not isinstance(usage, Mapping):
+        return None
+    counts: dict[str, int] = {}
+    for key in ("input_tokens", "output_tokens", "thinking_tokens", "cache_read_tokens"):
+        value = usage.get(key, 0)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            return None
+        counts[key] = value
+    total = usage.get("total_tokens")
+    if isinstance(total, bool) or not isinstance(total, int) or total < 0:
+        return None
+    return AgyUsage(total_tokens=total, **counts)
+
+
 def _parse_init(payload: Mapping[str, object]) -> AgyInitEvent:
     values = _mapping(payload.get("init"))
     tools_value = values.get("tools")
@@ -203,6 +230,7 @@ def _parse_result(payload: Mapping[str, object]) -> AgyResultEvent:
         duration_seconds=_required_number(values, "duration_seconds"),
         num_turns=_required_integer(values, "num_turns"),
         has_usage=_usage_presence(values),
+        usage=_parse_usage(values),
     )
 
 

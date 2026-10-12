@@ -121,6 +121,7 @@ Model and effort changes apply from the next prompt. An unsuffixed concrete mode
 - Create, prompt, cancel, resume, and close independent sessions.
 - Stream ordered text updates and accept text or resource-link prompt blocks.
 - Report each agy tool step as an ACP `tool_call` (in progress, with parameters) and a `tool_call_update` (completed or failed, with output truncated at 4000 characters), so long turns are observable.
+- Return the turn's token usage (input, output, thinking, cache-read, total) in the `session/prompt` response `usage` field when agy reports it.
 - Resume an `agy` conversation identity without replaying prior history.
 - Run client-provided stdio MCP servers and preserve ordered additional directories.
 - Reject unsupported or malformed methods and values with sanitized protocol errors.

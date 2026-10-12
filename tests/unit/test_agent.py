@@ -1907,3 +1907,24 @@ async def test_config_change_during_prompt_applies_to_next_generation(tmp_path: 
     await agent.cancel(session.session_id)
     assert (await second_prompt).stop_reason == "cancelled"
     await agent.close()
+
+
+@pytest.mark.asyncio
+async def test_prompt_reports_agy_token_usage(tmp_path: Path) -> None:
+    async def send_update(_session_id: str, _update: dict[str, object]) -> None:
+        return None
+
+    agent = AgyAgent(agent_config(tmp_path, "usage"), send_update)
+    session = await agent.new_session(cwd=str(tmp_path), mcp_servers=[])
+    response = await agent.prompt(
+        session_id=session.session_id,
+        prompt=[{"type": "text", "text": "hello"}],
+    )
+
+    assert response.usage is not None
+    assert response.usage.total_tokens == 125
+    assert response.usage.input_tokens == 100
+    assert response.usage.output_tokens == 20
+    assert response.usage.thought_tokens == 5
+    assert response.usage.cached_read_tokens == 7
+    await agent.close()

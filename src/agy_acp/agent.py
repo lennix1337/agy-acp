@@ -36,6 +36,7 @@ from acp.schema import (
     TextContentBlock,
     ToolCallProgress,
     ToolCallStart,
+    Usage,
 )
 from pydantic import ValidationError
 
@@ -50,7 +51,13 @@ from agy_acp.errors import (
     McpHandoffError,
     ProtocolEncodingError,
 )
-from agy_acp.events import AgyEvent, AgyResultEvent, AgyResultStatus, AgyStepUpdateEvent
+from agy_acp.events import (
+    AgyEvent,
+    AgyResultEvent,
+    AgyResultStatus,
+    AgyStepUpdateEvent,
+    AgyUsage,
+)
 from agy_acp.executable import AgyCommand
 from agy_acp.mcp import (
     McpServerSpec,
@@ -268,6 +275,18 @@ def serialize_prompt(blocks: Sequence[Mapping[str, object]]) -> str:
     if not parts:
         raise _invalid_params()
     return "\n\n".join(parts)
+
+
+def _acp_usage(usage: AgyUsage | None) -> Usage | None:
+    if usage is None or usage.total_tokens == 0:
+        return None
+    return Usage(
+        total_tokens=usage.total_tokens,
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
+        thought_tokens=usage.thinking_tokens,
+        cached_read_tokens=usage.cache_read_tokens,
+    )
 
 
 class AgyAgent:
@@ -1115,7 +1134,7 @@ class AgyAgent:
         if self._is_cancelling(session):
             return await self._finish_cancellation(session_id, session)
         await self._close_generation(session_id, session, process, deadline)
-        return PromptResponse(stop_reason="end_turn")
+        return PromptResponse(stop_reason="end_turn", usage=_acp_usage(event.usage))
 
     async def _emit_delta(self, session_id: str, message_id: str, delta: str) -> None:
         update = update_agent_message(text_block(delta))

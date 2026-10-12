@@ -41,7 +41,7 @@ The adapter must follow these invariants:
 | --- | --- | --- |
 | Client to agent request | `initialize` | Negotiate ACP v1, answer any unsupported protocol version with the latest supported version, and advertise only verified capabilities. |
 | Client to agent request | `session/new` | Validate the workspace and stdio MCP specifications, register them for lazy first-prompt startup, and create an isolated `agy` session. |
-| Client to agent request | `session/prompt` | Serialize supported content, run one turn, stream updates, and return one terminal stop reason. |
+| Client to agent request | `session/prompt` | Serialize supported content, run one turn, stream updates, and return one terminal stop reason, with `usage` token counts when agy reports them. |
 | Client to agent notification | `session/cancel` | Cancel the active turn and return `cancelled` from the original prompt request. |
 | Agent to client notification | `session/update` | Stream ordered agent text chunks and `tool_call` / `tool_call_update` for agy tool steps through the SDK connection. |
 

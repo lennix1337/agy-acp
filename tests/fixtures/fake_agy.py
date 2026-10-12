@@ -119,7 +119,17 @@ def result(
             "error": None,
             "duration_seconds": 0,
             "num_turns": 1,
-            "usage": {},
+            "usage": (
+                {
+                    "input_tokens": 100,
+                    "output_tokens": 20,
+                    "thinking_tokens": 5,
+                    "cache_read_tokens": 7,
+                    "total_tokens": 125,
+                }
+                if MODE == "usage"
+                else {}
+            ),
         },
     }
 
