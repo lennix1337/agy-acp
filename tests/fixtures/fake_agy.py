@@ -119,6 +119,9 @@ def result(
             "error": None,
             "duration_seconds": 0,
             "num_turns": 1,
+            "denied_actions": (
+                [{"action": "command", "display_name": "RunCommand"}] if MODE == "denied" else []
+            ),
             "usage": (
                 {
                     "input_tokens": 100,

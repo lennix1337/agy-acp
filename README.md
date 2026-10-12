@@ -122,6 +122,7 @@ Model and effort changes apply from the next prompt. An unsuffixed concrete mode
 - Stream ordered text updates and accept text or resource-link prompt blocks.
 - Report each agy tool step as an ACP `tool_call` (in progress, with parameters) and a `tool_call_update` (completed or failed, with output truncated at 4000 characters), so long turns are observable.
 - Return the turn's token usage (input, output, thinking, cache-read, total) in the `session/prompt` response `usage` field when agy reports it.
+- Report actions agy denied in headless mode (for example a command outside its permission allow-list) as a message and in `_meta.agy.deniedActions`, so a client never mistakes a silent denial for success.
 - Resume an `agy` conversation identity without replaying prior history.
 - Run client-provided stdio MCP servers and preserve ordered additional directories.
 - Reject unsupported or malformed methods and values with sanitized protocol errors.

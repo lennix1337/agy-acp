@@ -1928,3 +1928,30 @@ async def test_prompt_reports_agy_token_usage(tmp_path: Path) -> None:
     assert response.usage.thought_tokens == 5
     assert response.usage.cached_read_tokens == 7
     await agent.close()
+
+
+@pytest.mark.asyncio
+async def test_prompt_reports_denied_actions(tmp_path: Path) -> None:
+    updates: list[dict[str, object]] = []
+
+    async def send_update(_session_id: str, update: dict[str, object]) -> None:
+        updates.append(update)
+
+    agent = AgyAgent(agent_config(tmp_path, "denied"), send_update)
+    session = await agent.new_session(cwd=str(tmp_path), mcp_servers=[])
+    response = await agent.prompt(
+        session_id=session.session_id,
+        prompt=[{"type": "text", "text": "hello"}],
+    )
+
+    assert response.stop_reason == "end_turn"
+    assert response.field_meta == {
+        "agy": {"deniedActions": [{"action": "command", "displayName": "RunCommand"}]}
+    }
+    notices = [
+        str(u["content"]["text"])  # type: ignore[index]
+        for u in updates
+        if u.get("sessionUpdate") == "agent_message_chunk"
+    ]
+    assert any("denied 1 action(s): command (RunCommand)" in n for n in notices)
+    await agent.close()

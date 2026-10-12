@@ -57,6 +57,14 @@ class AgyUsage:
 
 
 @dataclass(frozen=True, slots=True)
+class AgyDeniedAction:
+    """A tool action agy refused because headless mode cannot ask for approval."""
+
+    action: str
+    display_name: str
+
+
+@dataclass(frozen=True, slots=True)
 class AgyResultEvent:
     conversation_id: str
     status: AgyResultStatus
@@ -66,6 +74,7 @@ class AgyResultEvent:
     num_turns: int
     has_usage: bool
     usage: AgyUsage | None = None
+    denied_actions: tuple[AgyDeniedAction, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,6 +222,22 @@ def _parse_step_update(payload: Mapping[str, object]) -> AgyStepUpdateEvent:
     )
 
 
+def _parse_denied_actions(values: Mapping[str, object]) -> tuple[AgyDeniedAction, ...]:
+    """Actions agy denied this turn; malformed entries are skipped, not fatal."""
+    raw = values.get("denied_actions")
+    if not isinstance(raw, list):
+        return ()
+    denied: list[AgyDeniedAction] = []
+    for item in raw:
+        if not isinstance(item, Mapping):
+            continue
+        action = item.get("action")
+        display_name = item.get("display_name")
+        if isinstance(action, str) and isinstance(display_name, str):
+            denied.append(AgyDeniedAction(action, display_name))
+    return tuple(denied)
+
+
 def _parse_result(payload: Mapping[str, object]) -> AgyResultEvent:
     values = _mapping(payload.get("result"))
     try:
@@ -231,6 +256,7 @@ def _parse_result(payload: Mapping[str, object]) -> AgyResultEvent:
         num_turns=_required_integer(values, "num_turns"),
         has_usage=_usage_presence(values),
         usage=_parse_usage(values),
+        denied_actions=_parse_denied_actions(values),
     )
 
 

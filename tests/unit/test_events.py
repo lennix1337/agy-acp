@@ -4,6 +4,7 @@ import pytest
 
 from agy_acp.errors import InvalidEventError
 from agy_acp.events import (
+    AgyDeniedAction,
     AgyInitEvent,
     AgyResultEvent,
     AgyResultStatus,
@@ -302,3 +303,27 @@ def test_huge_event_duration_is_rejected_without_overflow() -> None:
                 },
             }
         )
+
+
+def test_result_event_parses_denied_actions() -> None:
+    event = parse_agy_event(
+        {
+            "event": "result",
+            "result": {
+                "conversation_id": "c",
+                "status": "SUCCESS",
+                "response": "",
+                "error": None,
+                "duration_seconds": 1,
+                "num_turns": 1,
+                "usage": {},
+                "denied_actions": [
+                    {"action": "command", "display_name": "RunCommand"},
+                    {"action": 3},
+                ],
+            },
+        }
+    )
+
+    assert isinstance(event, AgyResultEvent)
+    assert event.denied_actions == (AgyDeniedAction("command", "RunCommand"),)

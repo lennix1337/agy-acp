@@ -52,6 +52,7 @@ from agy_acp.errors import (
     ProtocolEncodingError,
 )
 from agy_acp.events import (
+    AgyDeniedAction,
     AgyEvent,
     AgyResultEvent,
     AgyResultStatus,
@@ -275,6 +276,25 @@ def serialize_prompt(blocks: Sequence[Mapping[str, object]]) -> str:
     if not parts:
         raise _invalid_params()
     return "\n\n".join(parts)
+
+
+def _denied_notice(denied: tuple[AgyDeniedAction, ...]) -> str:
+    names = ", ".join(sorted({f"{d.action} ({d.display_name})" for d in denied}))
+    return (
+        f"\n\n[agy-acp] agy denied {len(denied)} action(s): {names}. "
+        "Headless agy cannot ask for approval; allow the action in agy's own "
+        "permission settings and retry."
+    )
+
+
+def _denied_meta(denied: tuple[AgyDeniedAction, ...]) -> dict[str, object] | None:
+    if not denied:
+        return None
+    return {
+        "agy": {
+            "deniedActions": [{"action": d.action, "displayName": d.display_name} for d in denied]
+        }
+    }
 
 
 def _acp_usage(usage: AgyUsage | None) -> Usage | None:
@@ -1133,8 +1153,19 @@ class AgyAgent:
             )
         if self._is_cancelling(session):
             return await self._finish_cancellation(session_id, session)
+        if event.denied_actions:
+            await self._emit_delta_before_deadline(
+                session_id,
+                message_id,
+                _denied_notice(event.denied_actions),
+                deadline,
+            )
         await self._close_generation(session_id, session, process, deadline)
-        return PromptResponse(stop_reason="end_turn", usage=_acp_usage(event.usage))
+        return PromptResponse(
+            stop_reason="end_turn",
+            usage=_acp_usage(event.usage),
+            field_meta=_denied_meta(event.denied_actions),
+        )
 
     async def _emit_delta(self, session_id: str, message_id: str, delta: str) -> None:
         update = update_agent_message(text_block(delta))
